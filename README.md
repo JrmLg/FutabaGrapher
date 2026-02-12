@@ -2,6 +2,8 @@
 
 Futaba Grapher est une application web locale pour analyser des fichiers CSV de télémétrie Futaba et générer des graphiques imprimables.
 
+![Aperçu](public/sceenshoot.png)
+
 ## Fonctionnalités
 
 -   Import CSV par glisser‑déposer ou sélection de fichier
