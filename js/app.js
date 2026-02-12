@@ -65,6 +65,11 @@ function setGraphError(graphId, message = "") {
   else state.graphErrors[graphId] = message;
 }
 
+function setMainVisibility(hasDataset) {
+  if (!dom.main) return;
+  dom.main.style.display = hasDataset ? "" : "none";
+}
+
 function resetCharts() {
   for (const payload of state.chartInstances.values()) {
     if (payload?.chart && typeof payload.chart.dispose === "function") {
@@ -75,6 +80,11 @@ function resetCharts() {
 }
 
 function renderSummary(dataset) {
+  setMainVisibility(true);
+  const summaryPanel = document.querySelector("#summaryPanel");
+  if (summaryPanel) summaryPanel.hidden = false;
+  const printNoteSection = document.querySelector("#printNoteSection");
+  if (printNoteSection) printNoteSection.hidden = false;
   const visibleColumns = state.hideNullColumns && dataset.nullishColumns
     ? dataset.columns.length - dataset.nullishColumns.size
     : dataset.columnCount;
@@ -94,19 +104,41 @@ function renderSummary(dataset) {
 function renderPreview(dataset) {
   const visibleIndices = getVisibleColumnIndices();
   const headers = visibleIndices.map((idx) => getColumnBaseName(dataset.columns[idx]));
-  const rows = state.previewExpanded ? dataset.previewRows : dataset.previewRows.slice(0, 5);
-  const head = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
-  const body = `<tbody>${rows.map((row) => (
-    `<tr>${visibleIndices.map((idx) => `<td>${escapeHtml(row[idx])}</td>`).join("")}</tr>`
+  const rows = state.previewExpanded ? dataset.rows : dataset.previewRows.slice(0, 5);
+  const head = `<thead><tr><th class="row-index">#</th>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+  const body = `<tbody>${rows.map((row, idx) => (
+    `<tr><td class="row-index">${idx + 1}</td>${visibleIndices.map((colIdx) => `<td>${escapeHtml(row[colIdx])}</td>`).join("")}</tr>`
   )).join("")}</tbody>`;
   dom.previewTable.innerHTML = head + body;
+  const tableWrap = dom.previewTable.closest(".table-wrap");
+  if (tableWrap) {
+    tableWrap.classList.toggle("expanded", state.previewExpanded);
+  }
+  syncPreviewScrollShadow();
+}
+
+function syncPreviewScrollShadow() {
+  const tableWrap = dom.previewTable?.closest(".table-wrap");
+  if (!tableWrap) return;
+  const thead = dom.previewTable?.querySelector("thead");
+  if (thead) {
+    tableWrap.style.setProperty("--preview-head-height", `${thead.offsetHeight}px`);
+  }
+  const setShadow = () => {
+    tableWrap.classList.toggle("has-scroll-top", tableWrap.scrollTop > 1);
+  };
+  if (!tableWrap.dataset.scrollShadowBound) {
+    tableWrap.addEventListener("scroll", setShadow, { passive: true });
+    tableWrap.dataset.scrollShadowBound = "1";
+  }
+  setShadow();
 }
 
 function renderPreviewToggle(dataset) {
   const wrap = document.querySelector("#previewToggleWrap");
   const btn = document.querySelector("#previewToggleBtn");
   if (!wrap || !btn) return;
-  if (!dataset || dataset.previewRows.length <= 5) {
+  if (!dataset || dataset.rows.length <= 5) {
     wrap.hidden = true;
     return;
   }
@@ -1406,6 +1438,13 @@ function getVisibleColumnIndices() {
 }
 
 function init() {
+  setMainVisibility(false);
+  const summaryPanel = document.querySelector("#summaryPanel");
+  if (summaryPanel) summaryPanel.hidden = true;
+  const printNoteSection = document.querySelector("#printNoteSection");
+  if (printNoteSection) printNoteSection.hidden = true;
+  const previewWrap = document.querySelector("#previewToggleWrap");
+  if (previewWrap) previewWrap.hidden = true;
   if (dom.pageDate) {
     const today = new Date();
     dom.pageDate.textContent = today.toLocaleDateString("fr-FR", {

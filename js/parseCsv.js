@@ -184,7 +184,7 @@ export async function parseCsvText(text, sourceName = "dataset.csv") {
     headers,
     columns,
     timeColumnIndex: timeIdx,
-    previewRows: rows.slice(0, 10),
+    previewRows: rows.slice(0, 30),
     rows
   };
 }
